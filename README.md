@@ -2,6 +2,10 @@
 Joint-OCTAMamba official source code repository.
 Our code is shown in our_model.
 More details will be published soon.
+# OCTA 数据集说明
+
+## 数据集结构
+```
 dataset/
 ├── OCTA500_3M/                 # 3M分辨率OCTA数据集（多任务：FAZ+RV）
 │   ├── train/
