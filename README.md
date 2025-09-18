@@ -1,7 +1,6 @@
 # Joint-OCTAMamba
 Joint-OCTAMamba official source code repository.
-Our code is shown in our_model.
-More details will be published soon.
+Our code is shown in our_model.The pth will be published soon.
 # OCTA 数据集说明
 
 ## 数据集结构
