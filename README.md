@@ -30,6 +30,16 @@ dataset/
 │   └── test/
 │       ├── image/
 │       └── label/
+├── OCTA500_3M_RV/            # 3M分辨率OCTA数据集（仅FAZ任务）
+│   ├── train/
+│   │   ├── image/
+│   │   └── label/            # 仅FAZ标注
+│   ├── val/
+│   │   ├── image/
+│   │   └── label/
+│   └── test/
+│       ├── image/
+│       └── label/
 │
 └── OCTA500_6M/                # 6M分辨率OCTA数据集
     ├── train/
