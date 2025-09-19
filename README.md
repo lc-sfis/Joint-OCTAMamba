@@ -60,10 +60,6 @@ mage/
         └── label_RV/
 ```
 # Usage Instructions
-Here’s a **README-style English section** for your training instructions, based on the commands you provided:
-
----
-
 ## Training
 
 You can start training by using the commands provided below.
