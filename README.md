@@ -61,9 +61,6 @@ mage/
 ```
 # Usage Instructions
 ## Training
-
-You can start training by using the commands provided below.
-
 ### Multi-task Training on OCTA500 3M
 
 ```bash
