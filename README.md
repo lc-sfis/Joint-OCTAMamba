@@ -58,5 +58,4 @@ dataset/
 mage/
         ├── label_FAZ/
         └── label_RV/
-# OCTA 数据集说明
-OCTA_500_3M_XX is the dataset layout used for single-network training.
+#Usage Instructions
