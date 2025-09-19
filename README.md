@@ -99,14 +99,21 @@ python run_multitask_aligned.py \
 
 👉 *You can start training by using the commands provided above.*
 
-## JointOCTAMamba Multi-task Prediction
+Here’s the English version of the README for your script:
 
-This project provides the multi-task prediction script predict_multitask.py for OCTA images. It runs inference using trained models and exports prediction results.
+---
 
-Usage
+# JointOCTAMamba Multi-task Prediction
+
+This project provides the **multi-task prediction** script `predict_multitask.py` for OCTA images. It runs inference using trained models and exports prediction results.
+
+---
+
+## Usage
 
 Run the prediction script:
 
+```bash
 python predict_multitask.py \
     --model_name JointOCTAMamba \
     --weight_path ./pth/model_name.pth \
@@ -114,25 +121,57 @@ python predict_multitask.py \
     --faz_crop_size 224 \
     --format png \
     --gpu_id 0
+```
 
-Arguments
+---
 
---model_name
-The name of the model to be used, e.g., JointOCTAMamba.
+## Arguments
 
---weight_path
-Path to the model weights (.pth file).
+* `--model_name`
+  The name of the model to be used, e.g., `JointOCTAMamba`.
 
---dataset_name
-Dataset name, e.g., OCTA500_3M.
+* `--weight_path`
+  Path to the model weights (`.pth` file).
 
---faz_crop_size
-Crop size for the FAZ (Foveal Avascular Zone), commonly set to 224.
+* `--dataset_name`
+  Dataset name, e.g., `OCTA500_3M`.
 
---format
-Input image format, supports png or jpg.
+* `--faz_crop_size`
+  Crop size for the FAZ (Foveal Avascular Zone), commonly set to `224`.
 
---gpu_id
-ID of the GPU to use (e.g., 0). Use -1 for CPU mode.
+* `--format`
+  Input image format, supports `png` or `jpg`.
+
+* `--gpu_id`
+  ID of the GPU to use (e.g., `0`). Use `-1` for CPU mode.
+
+---
+
+## Examples
+
+1. Run inference on **OCTA500\_3M** with GPU 0:
+
+   ```bash
+   python predict_multitask.py \
+       --model_name JointOCTAMamba \
+       --weight_path ./pth/jointmamba.pth \
+       --dataset_name OCTA500_3M \
+       --faz_crop_size 224 \
+       --format png \
+       --gpu_id 0
+   ```
+
+2. Run inference on CPU:
+
+   ```bash
+   python predict_multitask.py \
+       --model_name JointOCTAMamba \
+       --weight_path ./pth/jointmamba.pth \
+       --dataset_name OCTA500_3M \
+       --faz_crop_size 224 \
+       --format png \
+       --gpu_id -1
+   ```
+
 
 
