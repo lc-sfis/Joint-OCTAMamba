@@ -58,4 +58,9 @@ dataset/
 mage/
         ├── label_FAZ/
         └── label_RV/
-#Usage Instructions
+```
+# Usage Instructions
+python run_multitask_aligned.py --dataset OCTA500_3M --gpu 0 --batch 2 --epochs 100 --faz_weight 6.1 --use_tta --faz_crop 224
+python run_multitask_aligned.py --dataset OCTA500_6M --gpu 0 --batch 2 --epochs 100 --faz_weight 4.0 --use_tta --faz_crop 224<img width="610" height="76" alt="image" src="https://github.com/user-attachments/assets/88a7266b-27c0-4926-8587-edd96bd94f29" />
+👉 “You can start training by using the commands provided above.”
+
