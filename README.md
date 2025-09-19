@@ -147,31 +147,5 @@ python predict_multitask.py \
 
 ---
 
-## Examples
-
-1. Run inference on **OCTA500\_3M** with GPU 0:
-
-   ```bash
-   python predict_multitask.py \
-       --model_name JointOCTAMamba \
-       --weight_path ./pth/jointmamba.pth \
-       --dataset_name OCTA500_3M \
-       --faz_crop_size 224 \
-       --format png \
-       --gpu_id 0
-   ```
-
-2. Run inference on CPU:
-
-   ```bash
-   python predict_multitask.py \
-       --model_name JointOCTAMamba \
-       --weight_path ./pth/jointmamba.pth \
-       --dataset_name OCTA500_3M \
-       --faz_crop_size 224 \
-       --format png \
-       --gpu_id -1
-   ```
-
 
 
