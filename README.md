@@ -1,9 +1,9 @@
 # Joint-OCTAMamba
 Joint-OCTAMamba official source code repository.
 Our code is shown in our_model.The pth will be published soon.
-# OCTA 数据集说明
+# OCTA Dataset Description
 OCTA_500_3M_XX is the dataset layout used for single-network training.
-## 数据集结构
+## Dataset Structure
 ```
 dataset/
 ├── OCTA500_3M/                 # 3M resolution OCTA dataset (multi-task: FAZ + RV)
