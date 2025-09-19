@@ -60,7 +60,52 @@ mage/
         └── label_RV/
 ```
 # Usage Instructions
-python run_multitask_aligned.py --dataset OCTA500_3M --gpu 0 --batch 2 --epochs 100 --faz_weight 6.1 --use_tta --faz_crop 224
-python run_multitask_aligned.py --dataset OCTA500_6M --gpu 0 --batch 2 --epochs 100 --faz_weight 4.0 --use_tta --faz_crop 224<img width="610" height="76" alt="image" src="https://github.com/user-attachments/assets/88a7266b-27c0-4926-8587-edd96bd94f29" />
-👉 “You can start training by using the commands provided above.”
+Here’s a **README-style English section** for your training instructions, based on the commands you provided:
+
+---
+
+## Training
+
+You can start training by using the commands provided below.
+
+### Multi-task Training on OCTA500 3M
+
+```bash
+python run_multitask_aligned.py \
+    --dataset OCTA500_3M \
+    --gpu 0 \
+    --batch 2 \
+    --epochs 100 \
+    --faz_weight 6.1 \
+    --use_tta \
+    --faz_crop 224
+```
+
+### Multi-task Training on OCTA500 6M
+
+```bash
+python run_multitask_aligned.py \
+    --dataset OCTA500_6M \
+    --gpu 0 \
+    --batch 2 \
+    --epochs 100 \
+    --faz_weight 4.0 \
+    --use_tta \
+    --faz_crop 224
+```
+
+### Notes
+
+* `--dataset`: Choose between **OCTA500\_3M** and **OCTA500\_6M** depending on resolution.
+* `--gpu`: Specify the GPU ID to use (e.g., 0 for the first GPU).
+* `--batch`: Batch size.
+* `--epochs`: Number of training epochs.
+* `--faz_weight`: Loss weight for the FAZ segmentation task.
+* `--use_tta`: Simple test-time augmentation.
+* `--faz_crop`: Crop size for FAZ region extraction.
+
+👉 *You can start training by using the commands provided above.*
+
+
+
 
