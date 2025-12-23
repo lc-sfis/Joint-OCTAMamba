@@ -8,25 +8,18 @@ import albumentations as alb
 from torch.utils.data import Dataset
 from typing import List, Dict, Tuple
 
-# [MODIFIED] 基础数据目录，而不是特定数据集的目录
 DATA_ROOT_BASE = "dataset"
-# [NEW] 定义已知的数据集名称
 KNOWN_DATASETS = ["OCTA500_3M", "OCTA500_6M"]
 
 def prepareDatasets() -> Dict[str, Dict[str, Dataset]]:
-    """
-    [MODIFIED] 工厂函数，自动检测并创建所有已知数据集的实例。
-    它会查找 "dataset/OCTA500_3M" 和 "dataset/OCTA_6M"。
-    """
     all_datasets = {}
-    print("--- 正在准备数据集 ---")
     for name in KNOWN_DATASETS:
         dataset_path = os.path.join(DATA_ROOT_BASE, name)
         if not os.path.exists(dataset_path):
-            print(f"🔍 未找到数据集 '{name}' 的路径: {dataset_path}, 已跳过。")
+            print(f"🔍 unfind '{name}' : {dataset_path}, jump。")
             continue
 
-        print(f"✅ 成功找到数据集: '{name}'")
+        print(f"✅ find dataset: '{name}'")
         splits = {}
         for split in ["train", "val", "test"]:
             split_path = os.path.join(dataset_path, split)
@@ -38,14 +31,11 @@ def prepareDatasets() -> Dict[str, Dict[str, Dataset]]:
             all_datasets[name] = splits
             
     if not all_datasets:
-        raise FileNotFoundError("错误：在 'dataset/' 目录下未找到任何有效的数据集 ('OCTA500_3M' 或 'OCTA_6M')。")
+        raise FileNotFoundError("error： 'dataset/' unfind ('OCTA500_3M' 或 'OCTA_6M')。")
         
     return all_datasets
 
 class SegmentationDataset(Dataset):
-    """
-    为多任务分割准备数据。此类无需修改，因为它本身就是通用的。
-    """
     def __init__(self, path: str, *, is_training: bool):
         super().__init__()
         self.is_training = is_training
@@ -101,4 +91,5 @@ class SegmentationDataset(Dataset):
         labels = {"rv": rv_tensor, "faz": faz_tensor}
         
         return item["name"], img_tensor, labels
+
 
