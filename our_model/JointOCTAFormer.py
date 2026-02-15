@@ -1,9 +1,9 @@
-# filename: MultiTaskOCTAMamba_FARGO_Interactive.py (最终版)
+
 import torch
 import torch.nn as nn
 from typing import Dict, List, Tuple
 
-# 导入已经存在的、性能验证过的单任务网络
+
 try:
     from .OCTAFormer import OCTASwin_Medium_Channel as RV_Model
     from .OCTAFormerfaz import OCTASwin_Medium_Channel as FAZ_Model
@@ -11,22 +11,15 @@ except ImportError:
     from OCTAFormer import OCTASwin_Medium_Channel  as RV_Model
     from OCTAFormerfaz import OCTASwin_Medium_Channel as FAZ_Model
 #torch.autograd.set_detect_anomaly(True)
-# --- 辅助函数，用于中心裁剪 ---
 def center_crop_tensor(tensor: torch.Tensor, crop_size: Tuple[int, int]) -> torch.Tensor:
-    """对(B, C, H, W)的张量进行中心裁剪"""
+
     _, _, h, w = tensor.shape
     th, tw = crop_size
     x1 = int(round((w - tw) / 2.))
     y1 = int(round((h - th) / 2.))
     return tensor[:, :, y1:y1 + th, x1:x1 + tw]
 
-class JointOCTAFormer(nn.Module):
-    """
-    [核心逻辑调整]:
-    - `forward`方法现在区分训练和评估模式。
-    - 训练时(`self.training=True`): FAZ返回裁剪后的预测 `faz_cropped`。
-    - 评估时(`self.training=False`): FAZ返回一个完整的、将预测粘贴回中心的全尺寸图 `faz`。
-    """
+class RVPriorFormer(nn.Module):
     def __init__(self, tasks: List[str], use_checkpoint: bool = True, faz_crop_size: int = 128, end_to_end: bool = False):
         super().__init__()
         print("🚀 Initializing FARGO-style INTERACTIVE model with Train/Eval FAZ logic.")
@@ -37,7 +30,6 @@ class JointOCTAFormer(nn.Module):
         # self.rv_model = RV_Model()
         # self.faz_model = FAZ_Model()
         
-        # # ... (动态调整FAZ输入层的代码保持不变) ...
         # original_conv = self.faz_model.qseme.init_conv[0]
         # new_in_channels = 2
         self.tasks = tasks
@@ -111,6 +103,7 @@ class JointOCTAFormer(nn.Module):
             faz_full_output = torch.zeros_like(x[:, :1, :, :])
             faz_full_output[:, :, y1:y1 + th, x1:x1 + tw] = faz_cropped_output
             return {"rv": rv_output, "faz": faz_full_output}
+
 
 
 
