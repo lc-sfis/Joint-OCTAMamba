@@ -20,9 +20,9 @@ from AdaptiveFeatureFusion import SimplifiedAttentionalFeatureFusion,AdaptiveFea
 from wtconv2d import *
 import einops
 try:
-    from .lsa import LSA  # 包内导入
+    from .lsa import LSA
 except ImportError:
-    from lsa import LSA  # 备用
+    from lsa import LSA  
 
 
 try:
@@ -31,7 +31,6 @@ except:
     pass
 
 class OptimizedSS2D(nn.Module):
-    """针对中等通道数优化的SS2D"""
     def __init__(
             self,
             d_model,
@@ -240,7 +239,6 @@ class MediumChannelVSSBlock(nn.Module):
         super().__init__()
         self.ln_1 = norm_layer(hidden_dim)
         
-        # 核心Mamba模块
        # self.ss2d = VesselAwareSS2D(d_model=hidden_dim, dropout=attn_drop_rate, d_state=d_state, **kwargs)
         self.ss2d = OptimizedSS2D(d_model=hidden_dim, dropout=attn_drop_rate, d_state=d_state, **kwargs)
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
@@ -252,40 +250,24 @@ class MediumChannelVSSBlock(nn.Module):
                 nn.Conv2d(reduction, hidden_dim, 1),
                 nn.Sigmoid()
             )
-        # 仅在中等通道数时使用增强特征
-        # if hidden_dim >= 64:
-        #     # 轻量级通道注意力
-        #     reduction = max(hidden_dim // 8, 4)
-        #     self.channel_attention = nn.Sequential(
-        #         nn.AdaptiveAvgPool2d(1),
-        #         nn.Conv2d(hidden_dim, reduction, 1),
-        #         nn.ReLU(inplace=True),
-        #         nn.Conv2d(reduction, hidden_dim, 1),
-        #         nn.Sigmoid()
-        #     )
-        # else:
-        #     self.channel_attention = None
-
-        # LSA 正则化（借鉴 Mamba-Sea）
         self.lsa = LSA(p=0.85) if hidden_dim >= 32 else None
 
     def forward(self, input: torch.Tensor):
         x = self.ln_1(input)
         
-        # Mamba处理
+
         x = self.ss2d(x)
         
-        # 残差连接
+
         x = input + self.drop_path(x)
         
-        # 轻量级通道注意力（仅中等通道数时使用）
+
         if self.channel_attention is not None:
             x_perm = x.permute(0, 3, 1, 2)  # B H W C -> B C H W
             att_weight = self.channel_attention(x_perm)
             x_perm = x_perm * att_weight
             x = x_perm.permute(0, 2, 3, 1)  # B C H W -> B H W C
         
-        # LSA 正则化
         if self.lsa is not None:
             B, H, W, C = x.shape
             x_reshape = x.permute(0, 3, 1, 2).contiguous().view(B, C, -1)  # B C L
@@ -295,13 +277,10 @@ class MediumChannelVSSBlock(nn.Module):
         return x
 
 class CompactVesselEnhancement(nn.Module):
-    """紧凑型血管增强模块"""
     def __init__(self, in_channels):
         super().__init__()
         
-        # 仅在通道数>=64时使用血管增强
         if in_channels >= 64:
-            # 简化的多尺度检测
             self.vessel_conv = nn.Sequential(
                 nn.Conv2d(in_channels, in_channels//2, 3, padding=1, groups=in_channels//4),
                 nn.Conv2d(in_channels//2, in_channels//2, 1),
@@ -309,7 +288,6 @@ class CompactVesselEnhancement(nn.Module):
                 nn.ReLU(inplace=True)
             )
             
-            # 方向性检测
             self.directional_conv = nn.Sequential(
                 nn.Conv2d(in_channels, in_channels//4, (1, 5), padding=(0, 2)),
                 nn.Conv2d(in_channels//4, in_channels//4, (5, 1), padding=(2, 0)),
@@ -317,7 +295,6 @@ class CompactVesselEnhancement(nn.Module):
                 nn.ReLU(inplace=True)
             )
             
-            # 融合层
             self.fusion = nn.Sequential(
                 nn.Conv2d(in_channels//2 + in_channels//4, in_channels, 1),
                 nn.BatchNorm2d(in_channels),
@@ -338,38 +315,32 @@ class CompactVesselEnhancement(nn.Module):
         fused = torch.cat([vessel_feat, directional_feat], dim=1)
         enhanced = self.fusion(fused)
         
-        return x + enhanced * 0.3  # 较小的残差权重
+        return x + enhanced * 0.3  
 
 class MediumChannelOCTAMambaBlock(nn.Module):
-    """中等通道数OCTA-Mamba块"""
     def __init__(self, in_c, out_c):
         super().__init__()
         self.in_c = in_c
         self.out_c = out_c
         self.conv = HybridDirectionalFeatureExtractor(in_channels=in_c, out_channels=out_c)
         
-        # 归一化和激活
         self.ln = nn.LayerNorm(out_c)
         self.act = nn.GELU()
         
-        # 中等通道数VSSBlock
         self.block = MediumChannelVSSBlock(hidden_dim=out_c, drop_path=0.1)
         
-        # 残差连接
         self.residual_conv = nn.Conv2d(in_channels=in_c, out_channels=out_c, kernel_size=1)
-        #self.scale1 =nn.Parameter(torch.ones(1))
-        # 动态权重
         self.scale = nn.Parameter(torch.ones(1))
 
     def forward(self, x):
         skip = self.residual_conv(x)
         x = self.conv(x)
-        # Mamba处理
+    
         x = x.permute(0, 2, 3, 1)  # B C H W -> B H W C
         x = self.block(x)
         x = x.permute(0, 3, 1, 2)  # B H W C -> B C H W
 
-        # 归一化和激活
+        
         x = x.permute(0, 2, 3, 1)  # B C H W -> B H W C
         x = self.act(self.ln(x))
         x = x.permute(0, 3, 1, 2)  # B H W C -> B C H W
@@ -417,21 +388,21 @@ class Attention_block(nn.Module):
     def forward(self, g, x):
         g1 = self.W_g(g)
         x1 = self.W_x(x)
-         # 检查并调整尺寸以解决不匹配问题
+         
         if g1.shape[2:] != x1.shape[2:]:
-            # 获取目标尺寸（使用较小的尺寸）
+            
             target_h = min(g1.shape[2], x1.shape[2])
             target_w = min(g1.shape[3], x1.shape[3])
             
-            # 调整g1的尺寸
+            
             if g1.shape[2:] != (target_h, target_w):
                 g1 = F.interpolate(g1, size=(target_h, target_w), mode='bilinear', align_corners=True)
             
-            # 调整x1的尺寸
+            
             if x1.shape[2:] != (target_h, target_w):
                 x1 = F.interpolate(x1, size=(target_h, target_w), mode='bilinear', align_corners=True)
                 
-            # 同时调整x的尺寸以匹配
+           
             if x.shape[2:] != (target_h, target_w):
                 x = F.interpolate(x, size=(target_h, target_w), mode='bilinear', align_corners=True)
         psi = self.relu(g1 + x1)
@@ -439,16 +410,15 @@ class Attention_block(nn.Module):
         return x * psi
 
 class MediumChannelEncoderBlock(nn.Module):
-    """中等通道数编码器块"""
+    
     def __init__(self, in_c, out_c):
         super().__init__()
         self.octamamba = MediumChannelOCTAMambaBlock(in_c, out_c)
         
-        # 仅在中等通道数时使用SE
-        #if out_c >= 32:
+        
+        
         self.se = SEBlock(out_c, reduction=8)
-        # else:
-        #     self.se = nn.Identity()
+
             
         self.bn = nn.BatchNorm2d(out_c)
         self.act = nn.GELU()
@@ -462,16 +432,12 @@ class MediumChannelEncoderBlock(nn.Module):
         return x, skip
 
 class MediumChannelDecoderBlock(nn.Module):
-    """中等通道数解码器块"""
+    
     def __init__(self, in_c, skip_c, out_c,use_advanced_fusion=False):
         super().__init__()
         self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         
-        # 仅在中等通道数时使用注意力机制
-        #if skip_c >= 32:
-        #self.attGate = Attention_block(F_g=in_c, F_l=skip_c, F_int=max(skip_c // 4, 4))
-        # else:
-        #     self.attGate = None
+    
         self.attGate = None
         if use_advanced_fusion and skip_c >= 64:
             self.feature_fusion = AdaptiveFeatureFusion(
@@ -500,14 +466,14 @@ class MediumChannelDecoderBlock(nn.Module):
         x = self.octamamba(x)
         return x
 
-#========== 原始CompactQSEME类（已注释，使用新的增强版本） ==========
+
 class CompactQSEME(nn.Module):
-    """紧凑版QSEME，适合中等通道数"""
+    
     def __init__(self, out_c=16):
         super().__init__()
         self.out_c = out_c
         
-        # 降低初始通道数
+        
         init_channels = 32
         
         self.init_conv = nn.Sequential(
@@ -516,7 +482,7 @@ class CompactQSEME(nn.Module):
             nn.ReLU(),
         )
 
-        # 简化的多分支处理
+       
         branch_channels = init_channels // 4
         
         self.branch1 = nn.Sequential(
@@ -538,7 +504,7 @@ class CompactQSEME(nn.Module):
         
         self.branch4 = SEBlock(branch_channels, reduction=4)
         
-        # 融合层
+        
         self.fusion = nn.Sequential(
             nn.Conv2d(init_channels, out_c, 1),
             nn.BatchNorm2d(out_c),
@@ -548,44 +514,29 @@ class CompactQSEME(nn.Module):
     def forward(self, x):
         x = self.init_conv(x)
         
-        # 分割为4个分支
+       
         x1, x2, x3, x4 = x.chunk(4, dim=1)
         
-        # 各分支处理
+        
         feat1 = self.branch1(x1)
         feat2 = self.branch2(x2)
         feat3 = self.branch3(x3)
         feat4 = self.branch4(x4)
         
-        # 重新组合
+        
         fused = torch.cat([feat1, feat2, feat3, feat4], dim=1)
         return self.fusion(fused)
 
 class RVMamba(nn.Module):
     def __init__(self, qseme_type='conservative'):
-        """
-        Args:
-            qseme_type (str): QSEME模块类型
-                - 'conservative': 保守增强版DWT (推荐，风险最低)
-                - 'enhanced': 完整增强版DWT+DFM+GCM (功能最全，参数较多)
-                - 'original': 原始CompactQSEME (已注释，不推荐)
-        """
+
         super().__init__()
 
         self.qseme = CompactQSEME(out_c=16)
-        #self.qseme = QSEME(out_c=16)
-        # self.qseme = EnhancedQSEMEWithDWT(out_c=16)
-        # print("🚀 使用完整增强版QSEME (DWT+DFM+GCM)")
-
-        # self.qseme = ConservativeEnhancedQSEME(out_c=16)
-        # print("⚠️  未知QSEME类型，使用保守增强版")
-        
-        # 渐进式中等通道增长：16->32->64->128
         self.e1 = MediumChannelEncoderBlock(16, 32)    # 16->32
         self.e2 = MediumChannelEncoderBlock(32, 64)    # 32->64  
         self.e3 = MediumChannelEncoderBlock(64, 128)   # 64->128
         
-        # 瓶颈层：限制在256以内
         #self.bottleneck = MediumChannelOCTAMambaBlock(128, 256)
         self.bottleneck = nn.Sequential(
             MediumChannelOCTAMambaBlock(128, 256),
@@ -593,12 +544,10 @@ class RVMamba(nn.Module):
             VesselMultiAttentionFusion(256)
         )
         
-        # 解码器：逐步减少通道数
         self.d3 = MediumChannelDecoderBlock(256, 128, 128,use_advanced_fusion=False)
         self.d2 = MediumChannelDecoderBlock(128, 64, 64,use_advanced_fusion=False)
         self.d1 = MediumChannelDecoderBlock(64, 32, 32,use_advanced_fusion=False)
         
-        # 深度监督（轻量级）
         self.deep_supervision = nn.ModuleList([
             # nn.Conv2d(128, 1, 1),
             # nn.Conv2d(64, 1, 1),
@@ -615,42 +564,33 @@ class RVMamba(nn.Module):
                 nn.Conv2d(32,1,1)
             )
         ])
-          # 最终输出层 - 增强版
         self.final_conv = nn.Sequential(
             nn.Conv2d(32, 32, 3, padding=1),
             nn.BatchNorm2d(32),
             nn.ReLU(inplace=True),
-            VesselMultiAttentionFusion(32, reduction=4),  # 最后的血管注意力
+            VesselMultiAttentionFusion(32, reduction=4),  
             nn.Conv2d(32, 16, 3, padding=1),
             nn.BatchNorm2d(16),
             nn.ReLU(inplace=True),
             nn.Conv2d(16, 1, 1)
         )
-        # 最终输出层
-        # self.final_conv = nn.Sequential(
-        #     nn.Conv2d(32, 16, 3, padding=1),
-        #     nn.BatchNorm2d(16),
-        #     nn.ReLU(inplace=True),
-        #     nn.Conv2d(16, 1, 1)
-        # )
         
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x, return_deep_supervision=False):
         input_size = x.shape[-2:]
         
-        # 特征提取
+       
         x = self.qseme(x)    # 1->16
         
-        # 编码器
         x, skip1 = self.e1(x)    # 16->32
         x, skip2 = self.e2(x)    # 32->64
         x, skip3 = self.e3(x)    # 64->128
         
-        # 瓶颈
+        
         x = self.bottleneck(x)   # 128->256
         
-        # 解码器 + 深度监督
+        
         x = self.d3(x, skip3)    # 256+128->128
         if return_deep_supervision:
             deep_out2 = self.deep_supervision[0](x)
@@ -661,7 +601,6 @@ class RVMamba(nn.Module):
         
         x = self.d1(x, skip1)    # 64+32->32
         
-        # 最终输出
         final_out = self.final_conv(x)
         final_out = self.sigmoid(final_out)
         
@@ -677,46 +616,31 @@ def count_parameters(model):
 
 if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"使用设备: {device}")
     
-    # 测试不同版本的QSEME
     qseme_versions = ['conservative', 'enhanced']
     
     for version in qseme_versions:
         print(f"\n{'='*50}")
-        print(f"测试 {version.upper()} 版本的OCTAMamba模型")
         print('='*50)
         
-        # 创建模型
         model = RVMamba(qseme_type=version).to(device)
         
-        # 测试不同输入尺寸
         test_sizes = [(224, 224), (400, 400)]
         
         for h, w in test_sizes:
             img = torch.randn(1, 1, h, w).to(device)
             
-            # 测试正常输出
             with torch.no_grad():
                 out = model(img)
-                print(f"输入尺寸 {h}x{w}: 输出形状 {out.shape}")
             
-            # 测试深度监督输出
             with torch.no_grad():
                 final_out, deep_outs = model(img, return_deep_supervision=True)
-                print(f"  深度监督输出: {[out.shape for out in deep_outs]}")
+
         
-        # 参数统计
         params = count_parameters(model)
-        print(f"\n模型参数量: {params:,} ({params/1e6:.1f}M)")
+        print(f"\ {params:,} ({params/1e6:.1f}M)")
         
-        # 清理GPU内存
         del model
         if device.type == 'cuda':
             torch.cuda.empty_cache()
     
-    print(f"\n{'='*50}")
-    print("✅ 所有版本的OCTAMamba模型测试完成！")
-    print("💡 推荐使用: qseme_type='conservative'（保守增强版，风险最低）")
-    print("🚀 高级功能: qseme_type='enhanced'（完整增强版，功能最全）")
-    print('='*50) 
