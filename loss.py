@@ -228,7 +228,6 @@ class MinimalEnhancedLoss(nn.Module):
         return total_loss
 
 class UltraConservativeLoss(nn.Module):
-    """超保守损失函数 - 仅添加0.5%的Focal权重"""
     def __init__(self):
         super(UltraConservativeLoss, self).__init__()
         self.dice_loss = DiceLoss()
@@ -474,6 +473,7 @@ class AsymmetricLoss(nn.Module):
         loss = -(self.beta_pos * pos_loss + self.beta_neg * neg_loss)
         
         return loss.mean()
+
 
 
 
