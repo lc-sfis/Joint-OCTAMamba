@@ -15,10 +15,10 @@ class MetricsStatistics:
             "Hausdorff": self.cal_hausdorff
         }
         self.save_dir = save_dir
-        self.metric_values = defaultdict(list) # check epoch 临时用
-        self.metric_epochs = defaultdict(list) # 保存了指定epoch的各样本平均值
+        self.metric_values = defaultdict(list) 
+        self.metric_epochs = defaultdict(list)
 
-    def cal_epoch_metric(self, metrics, label_type, label, pred): # 计算并保存样本指标
+    def cal_epoch_metric(self, metrics, label_type, label, pred):
         for x in metrics:self.metric_values["{}-{}".format(x, label_type)].append(self.func_dct[x](label, pred))
 
     def record_result(self, epoch):
