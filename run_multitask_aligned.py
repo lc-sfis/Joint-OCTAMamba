@@ -15,8 +15,8 @@ import numpy as np
 import cv2
 
 from dataset import prepareDatasets
-from our_model.JointOCTAFormer import JointOCTAFormer as MultiTaskOCTFormer, center_crop_tensor
-from our_model.JointOCTAMamba import JointOCTAMamba as MultiTaskOCTAMamba, center_crop_tensor # Original import name
+from our_model.JointOCTAFormer import RVPriorFormer as MultiTaskOCTFormer, center_crop_tensor
+from our_model.JointOCTAMamba import RVPriorMamba as MultiTaskOCTAMamba, center_crop_tensor # Original import name
 from loss import DiceLoss, BoundaryLoss, HausdorffLoss, TverskyLoss
 
 def set_seed(seed: int = 42):
