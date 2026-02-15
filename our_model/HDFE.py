@@ -17,7 +17,6 @@ from torchinfo import summary
 
 
 class GhostModule(nn.Module):
-    """鬼影卷积模块"""
     def __init__(self, in_channels, out_channels, scale=2):
         super(GhostModule, self).__init__()
         self.out_channels = out_channels
@@ -35,7 +34,6 @@ class GhostModule(nn.Module):
         return out[:, :self.out_channels, :, :]
 
 class eca_layer(nn.Module):
-    """ECA注意力模块"""
     def __init__(self, channel, k_size=3):
         super(eca_layer, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
@@ -50,7 +48,6 @@ class eca_layer(nn.Module):
         return x * y.expand_as(x)
 
 class BNPReLU(nn.Module):
-    """BN+PReLU组合模块"""
     def __init__(self, nIn):
         super().__init__()
         self.bn = nn.BatchNorm2d(nIn, eps=1e-3)
@@ -293,20 +290,18 @@ class HybridDirectionalFeatureExtractor(nn.Module):
         super().__init__()
         mid_channels = in_channels // 4
         
-        # 基础特征转换
         self.initial_conv = nn.Sequential(
             nn.Conv2d(in_channels, mid_channels, kernel_size=1),
             BNPReLU(mid_channels)
         )
         
-        # GhostModule 提取基础特征
         self.ghost_initial = GhostModule(mid_channels, mid_channels)
         
-        # DSConv 分支（多方向）
+
         self.dsconv_x = DSConv(mid_channels, mid_channels, kernel_size=7, morph=0, if_offset=True)
         self.dsconv_y = DSConv(mid_channels, mid_channels, kernel_size=7, morph=1, if_offset=True)
         
-        # 多尺度空洞卷积分支
+
         self.dilated_convs = nn.ModuleList([
             nn.Sequential(
                 nn.Conv2d(mid_channels, mid_channels, kernel_size=3, dilation=d, padding=d, groups=mid_channels),
@@ -317,58 +312,58 @@ class HybridDirectionalFeatureExtractor(nn.Module):
             nn.Conv2d(mid_channels*3, mid_channels, kernel_size=3, padding=1, groups=mid_channels),
             BNPReLU(mid_channels)
         )
-        # 特征增强模块
+    
         self.feature_enhancer = FeaturePyramidEnhance(mid_channels)
         
-        # 特征交互模块
+     
         self.feature_interaction = FeatureInteractionModule(
-            in_channels=mid_channels * 2,  # 输入通道数为 mid_channels * 2
+            in_channels=mid_channels * 2, 
             out_channels=mid_channels * 3
         )
         
-        # 动态特征融合模块
+       
         self.dynamic_fusion = nn.Sequential(
             nn.Conv2d(mid_channels * 6, out_channels, kernel_size=1),
             BNPReLU(out_channels)
         )
         
-        # 注意力引导模块
+      
         self.attention_guide = eca_layer(out_channels)
         
-        # 残差连接
+      
         self.residual = nn.Conv2d(in_channels, out_channels, kernel_size=1) if in_channels != out_channels else nn.Identity()
 
     def forward(self, x):
         residual = self.residual(x)
         
-        # 初始特征转换
+        
         x = self.initial_conv(x)
         
-        # GhostModule 提取基础特征
+      
         ghost_feat = self.ghost_initial(x)
-        # DSConv 提取方向性特征
+        
         ds_x_feat = self.dsconv_x(ghost_feat)
         ds_y_feat = self.dsconv_y(ghost_feat)
 
-        # 特征交互融合
+       
         interact_feat = self.feature_interaction(ds_x_feat, ds_y_feat)
         
-        # 多尺度空洞卷积提取特征
         dilated_feats = [branch(ghost_feat) for branch in self.dilated_convs]
         dilated_feat = torch.cat(dilated_feats, dim=1)
         dilated_feat = self.zip_convs(dilated_feat)
-        # 特征增强
+       
         enhanced_feat = self.feature_enhancer(dilated_feat)
        
         #print(f"enhanced_feat shape: {enhanced_feat.shape}")
-        # 动态融合所有特征
+        
         #print(f"interact_feat shape: {interact_feat.shape}")
         fused_feat = torch.cat([interact_feat, enhanced_feat], dim=1)
         fused_feat = self.dynamic_fusion(fused_feat)
         
-        # 注意力引导特征聚焦
+       
         fused_feat = self.attention_guide(fused_feat)
         
-        # 输出
+        
         out = fused_feat + residual
+
         return out
