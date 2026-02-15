@@ -13,12 +13,10 @@ from torch import Tensor
 import sys
 import os
 
-# --- 从 OCTAMamba 继承的辅助模块 ---
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from HDFE import HybridDirectionalFeatureExtractor
 from VMAF import VesselMultiAttentionFusion
 from AdaptiveFeatureFusion import SimplifiedAttentionalFeatureFusion
-# [!!! 新增 !!!] 导入 LSA
 try:
     from .lsa import LSA
 except ImportError:
@@ -122,7 +120,6 @@ class SwinTransformerBlock(nn.Module):
         x = identity + x
         return x
 
-# --- [!!! 核心修改 !!!] Swin VSSBlock, 对齐了 Mamba 的 LSA ---
 class SwinTransformerVSSBlock(nn.Module):
     def __init__(
             self,
@@ -158,7 +155,6 @@ class SwinTransformerVSSBlock(nn.Module):
                 nn.Sigmoid()
             )
         
-        # [!!! 对齐Mamba !!!] 新增 LSA 正则化
         self.lsa = LSA(p=0.85) if hidden_dim >= 32 else None
 
     def forward(self, input: torch.Tensor):
@@ -177,7 +173,6 @@ class SwinTransformerVSSBlock(nn.Module):
         x_perm = x_perm * att_weight
         x = x_perm.permute(0, 2, 3, 1)
         
-        # [!!! 对齐Mamba !!!] 应用 LSA 正则化
         if self.lsa is not None:
             B, H, W, C = x.shape
             x_reshape = x.permute(0, 3, 1, 2).contiguous().view(B, C, -1)  # B C L
@@ -186,7 +181,6 @@ class SwinTransformerVSSBlock(nn.Module):
             
         return x
 
-# (其余代码 MediumChannelOCTASwinBlock, SEBlock, CompactQSEME, Encoder/Decoder, 以及主模型 OCTASwin_Medium_Channel 均无变化，此处省略)
 class MediumChannelOCTASwinBlock(nn.Module):
     def __init__(self, in_c, out_c, is_shift=True):
         super().__init__()
@@ -317,19 +311,16 @@ class OCTASwin_Medium_Channel(nn.Module):
             return final_out
 
 def count_parameters(model):
-    """计算模型的总参数量和可训练参数量"""
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     return total_params, trainable_params
 
-# [!!! 新增 !!!] Main function for testing
 if __name__ == "__main__":
-    # 实例化模型
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = OCTASwin_Medium_Channel().to(device)
     model.eval() # or model.train()
 
-    # 计算并打印参数量
     total_params, trainable_params = count_parameters(model)
     print("\n" + "="*50)
     print(f"Model: {model.__class__.__name__}")
@@ -337,11 +328,9 @@ if __name__ == "__main__":
     print(f"  - Trainable Parameters: {trainable_params/1e6:.2f} M")
     print("="*50 + "\n")
 
-    # 创建一个模拟输入张量
     # B, C, H, W -> 1, 1, 256, 256
     dummy_input = torch.randn(1, 1, 256, 256).to(device)
 
-    # 测试前向传播
     try:
         print("Testing forward pass without deep supervision...")
         start_time = time.time()
