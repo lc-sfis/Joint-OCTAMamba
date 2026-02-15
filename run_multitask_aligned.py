@@ -14,7 +14,6 @@ import random
 import numpy as np
 import cv2
 
-# --- 模块导入 ---
 from dataset import prepareDatasets
 from our_model.JointOCTAFormer import JointOCTAFormer as MultiTaskOCTFormer, center_crop_tensor
 from our_model.JointOCTAMamba import JointOCTAMamba as MultiTaskOCTAMamba, center_crop_tensor # Original import name
@@ -30,7 +29,6 @@ def set_seed(seed: int = 42):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.enabled = True
     os.environ['PYTHONHASHSEED'] = str(seed)
-    print(f"随机种子已设置为: {seed}")
 
 def calc_result(np_pred:np.ndarray, np_label:np.ndarray, thresh_value=None):
     temp = cv2.normalize(np_pred, None, 0, 255, cv2.NORM_MINMAX).astype("uint8")
@@ -276,7 +274,6 @@ def main():
         with open(json_log_path, "w") as f: json.dump(data, f, indent=4)
         print(f"      ✓ TEST results for '{tag_name}' saved to {json_log_path}")
 
-    # --- 主训练循环 ---
     for epoch in range(1, args.epochs + 1):
         print(f"\n--- Epoch {epoch}/{args.epochs} ---")
         train_metrics = train_one_epoch(model, ld_train, device, optimizer, FAZ_CROP_SIZE, args.rv_weight, args.faz_weight)
@@ -292,8 +289,6 @@ def main():
         print(f"  ├── VAL RV  Dice: {current_dice_rv:.4f} (Best: {best_rv_dice:.4f} at E{best_rv_epoch})")
         print(f"  └── VAL FAZ Dice: {current_dice_faz:.4f} (Best: {best_faz_dice:.4f} at E{best_faz_epoch})")
 
-        # --- 保存和测试逻辑 ---
-        # 1. 检查 Best AVG (保存模型并测试)
         is_late_training = epoch >= args.epochs * 0.7
         #is_late_training = True
         is_best_avg = current_dice_avg > best_val_metrics['dice_avg']
@@ -304,7 +299,7 @@ def main():
             print(f"      ✨ New best AVG model saved. Triggering test...")
             run_test_and_log("best_avg", epoch, train_metrics, val_metrics)
             
-        # 2. 检查 Best RV (仅保存模型)
+
         if current_dice_rv > best_rv_dice and is_late_training:
             best_rv_dice = current_dice_rv
             best_rv_epoch = epoch
@@ -312,7 +307,6 @@ def main():
             torch.save(model.state_dict(), path)
             print(f"      ✨ New best RV model saved (Dice: {current_dice_rv:.4f}).")
             
-        # 3. 检查 Best FAZ (仅保存模型)
         if current_dice_faz > best_faz_dice and is_late_training:
             best_faz_dice = current_dice_faz
             best_faz_epoch = epoch
@@ -320,7 +314,6 @@ def main():
             torch.save(model.state_dict(), path)
             print(f"      ✨ New best FAZ model saved (Dice: {current_dice_faz:.4f}).")
 
-        # 4. 周期性测试 (测试)
         is_late_training = epoch >= args.epochs * 0.7
         should_periodic_test = is_late_training and (epoch % 5 == 0)
         if should_periodic_test and not is_best_avg: 
@@ -335,7 +328,6 @@ def main():
             
     print("\n🎉 Training finished.")
 
-    # --- 训练结束后的全局测试 ---
     print("\n--- Starting Final Global Evaluation on Test Set ---")
     
     final_log_data = []
@@ -353,7 +345,6 @@ def main():
         model_path = os.path.join(output_dir, filename)
         if os.path.exists(model_path):
             print(f"-> Evaluating final best '{tag}' model from epoch {best_epoch}...")
-            # 创建一个新模型实例以确保权重被正确加载
             eval_model = model_class(tasks=[ds_name], faz_crop_size=args.faz_crop, end_to_end=args.end_to_end).to(device)
             eval_model.load_state_dict(torch.load(model_path, map_location=device))
             
