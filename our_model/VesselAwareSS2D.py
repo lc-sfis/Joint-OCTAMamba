@@ -9,7 +9,6 @@ from timm.models.layers import DropPath
 
 
 class VesselAwareSS2D(nn.Module):
-    """血管感知的SS2D - 专门优化血管分割"""
     def __init__(
             self,
             d_model,
@@ -38,47 +37,47 @@ class VesselAwareSS2D(nn.Module):
         self.d_inner = int(self.expand * self.d_model)
         self.dt_rank = math.ceil(self.d_model / 16) if dt_rank == "auto" else dt_rank
 
-        # 输入投影
+
         self.in_proj = nn.Linear(self.d_model, self.d_inner * 2, bias=bias, **factory_kwargs)
         
-        # 使用简单的分组方式，不再尝试优化为3等分，而是使用更简单的2等分或不分组
-        # 对于多尺度卷积，使用1/3、1/3和1/3的分布
+      
+
         div1 = max(1, self.d_inner // 3)
         div2 = max(1, self.d_inner // 3)
-        div3 = self.d_inner - div1 - div2  # 剩余部分
+        div3 = self.d_inner - div1 - div2
         
-        # 确保所有通道数为正数
+   
         if div3 <= 0:
             div1 = self.d_inner // 2
             div2 = self.d_inner - div1
             div3 = 0
         
-        # 多尺度卷积 - 捕获不同粗细的血管，使用固定分组数
+       
         self.multi_scale_conv = nn.ModuleList([
             nn.Conv2d(self.d_inner, div1, kernel_size=3, padding=1, groups=1, **factory_kwargs),
             nn.Conv2d(self.d_inner, div2, kernel_size=5, padding=2, groups=1, **factory_kwargs)
         ])
         
-        # 如果有足够的通道，添加第三个卷积
+
         if div3 > 0:
             self.multi_scale_conv.append(
                 nn.Conv2d(self.d_inner, div3, kernel_size=7, padding=3, groups=1, **factory_kwargs)
             )
         
-        # 方向感知卷积 - 使用固定通道数分配
-        div_dir = max(1, self.d_inner // 4)  # 每个方向卷积的输出通道数
+      
+        div_dir = max(1, self.d_inner // 4) 
         
-        # 方向感知卷积 - 捕获血管的方向性
+      
         self.directional_conv = nn.ModuleList([
-            nn.Conv2d(self.d_inner, div_dir, kernel_size=(1, 7), padding=(0, 3), groups=1),  # 水平
-            nn.Conv2d(self.d_inner, div_dir, kernel_size=(7, 1), padding=(3, 0), groups=1),  # 垂直
-            nn.Conv2d(self.d_inner, div_dir, kernel_size=5, padding=2, groups=1),  # 45度
-            nn.Conv2d(self.d_inner, div_dir, kernel_size=5, padding=2, groups=1)   # -45度
+            nn.Conv2d(self.d_inner, div_dir, kernel_size=(1, 7), padding=(0, 3), groups=1),  
+            nn.Conv2d(self.d_inner, div_dir, kernel_size=(7, 1), padding=(3, 0), groups=1),  
+            nn.Conv2d(self.d_inner, div_dir, kernel_size=5, padding=2, groups=1),  
+            nn.Conv2d(self.d_inner, div_dir, kernel_size=5, padding=2, groups=1)   
         ])
         
         self.act = nn.SiLU()
 
-        # Mamba参数初始化
+        
         self.x_proj = (
             nn.Linear(self.d_inner, (self.dt_rank + self.d_state * 2), bias=False, **factory_kwargs),
             nn.Linear(self.d_inner, (self.dt_rank + self.d_state * 2), bias=False, **factory_kwargs),
@@ -101,12 +100,11 @@ class VesselAwareSS2D(nn.Module):
         self.A_logs = self.A_log_init(self.d_state, self.d_inner, copies=4, merge=True)
         self.Ds = self.D_init(self.d_inner, copies=4, merge=True)
 
-        # 血管细节增强模块
         self.vessel_detail_enhance = nn.Sequential(
             nn.Conv2d(self.d_inner, self.d_inner // 2, 1),
             nn.BatchNorm2d(self.d_inner // 2),
             nn.ReLU(inplace=True),
-            nn.Conv2d(self.d_inner // 2, self.d_inner // 2, 3, padding=1, groups=self.d_inner // 16 or 1),  # 使用较小的分组数
+            nn.Conv2d(self.d_inner // 2, self.d_inner // 2, 3, padding=1, groups=self.d_inner // 16 or 1), 
             nn.BatchNorm2d(self.d_inner // 2),
             nn.ReLU(inplace=True),
             nn.Conv2d(self.d_inner // 2, self.d_inner, 1),
@@ -163,27 +161,26 @@ class VesselAwareSS2D(nn.Module):
         return D
 
     def forward_core_enhanced(self, x: torch.Tensor):
-        """增强的核心前向传播 - 包含血管特征增强"""
         self.selective_scan = selective_scan_fn
 
         B, C, H, W = x.shape
         L = H * W
         K = 4
 
-        # 多尺度特征提取
+       
         multi_scale_feats = []
         for conv in self.multi_scale_conv:
             multi_scale_feats.append(conv(x))
         x_multi = torch.cat(multi_scale_feats, dim=1)
         
-        # 方向感知特征
+      
         directional_feats = []
         for i, conv in enumerate(self.directional_conv):
-            if i == 2:  # 45度旋转
+            if i == 2:  
                 x_rot = torch.rot90(x, 1, [2, 3])
                 feat = conv(x_rot)
                 feat = torch.rot90(feat, -1, [2, 3])
-            elif i == 3:  # -45度旋转
+            elif i == 3:  
                 x_rot = torch.rot90(x, -1, [2, 3])
                 feat = conv(x_rot)
                 feat = torch.rot90(feat, 1, [2, 3])
@@ -192,14 +189,14 @@ class VesselAwareSS2D(nn.Module):
             directional_feats.append(feat)
         x_directional = torch.cat(directional_feats, dim=1)
         
-        # 融合多尺度和方向特征
+
         x = (x_multi + x_directional) / 2
         
-        # 血管细节增强
+       
         vessel_attention = self.vessel_detail_enhance(x)
         x = x * vessel_attention
 
-        # 标准Mamba扫描
+        
         x_hwwh = torch.stack([x.view(B, -1, L), torch.transpose(x, dim0=2, dim1=3).contiguous().view(B, -1, L)], dim=1).view(B, 2, -1, L)
         xs = torch.cat([x_hwwh, torch.flip(x_hwwh, dims=[-1])], dim=1)
 
@@ -239,7 +236,7 @@ class VesselAwareSS2D(nn.Module):
         x = x.permute(0, 3, 1, 2).contiguous()
         x = self.act(x)
         
-        # 使用增强的核心
+       
         y1, y2, y3, y4 = self.forward_core_enhanced(x)
         assert y1.dtype == torch.float32
         y = y1 + y2 + y3 + y4
